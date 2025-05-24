@@ -9,6 +9,9 @@ use std::fs::File;
 use std::io::Write;
 use serde::{Serialize, Deserialize};
 
+// Define a constant for the embedding dimension
+const EMBEDDING_DIMENSION: usize = 100;
+
 // Structure to hold our embeddings for serialization
 #[derive(Serialize, Deserialize)]
 struct TextEmbedding {
@@ -74,9 +77,22 @@ fn main() -> Result<()> {
 
 // Create a simple tokenizer
 fn create_tokenizer() -> Result<Tokenizer> {
-    // Create a WordPiece tokenizer (simplified)
+    // Create a basic vocabulary with common words and the [UNK] token
+    let vocab = [
+        "[UNK]", "this", "is", "a", "sample", "sentence", "another", 
+        "example", "text", "for", "embedding", "model", "training", 
+        "rust", "systems", "programming", "language", "useful", 
+        "nlp", "tasks", "machine", "learning", "models", "can", 
+        "process", "data"
+    ]
+    .iter()
+    .map(|s| (s.to_string(), 1u32))
+    .collect::<std::collections::HashMap<String, u32>>();
+
+    // Create a WordPiece tokenizer with the vocabulary
     let wp_builder = WordPiece::builder()
         .unk_token("[UNK]".to_string())
+        .vocab(vocab)
         .build()
         .map_err(|e| anyhow!("Failed to build WordPiece: {}", e))?;
 
@@ -133,7 +149,7 @@ fn train_or_load_model() -> Result<FastText> {
         let mut args = fasttext::Args::new();
         // Use the correct model name from the enum (0 for skipgram)
         args.set_model(fasttext::ModelName::SG);
-        args.set_dim(100); // Set embedding dimension
+        args.set_dim(EMBEDDING_DIMENSION as i32); // Set embedding dimension using the constant
         args.set_epoch(5);
         args.set_input(train_file)
             .map_err(|e| anyhow!("Failed to set input file: {}", e))?;
@@ -181,7 +197,7 @@ fn embed_text(tokenizer: &Tokenizer, model: &FastText, text: &str) -> Result<Emb
 
 // Update the generate_embedding function to use FastText
 fn generate_embedding(model: &FastText, tokens: &[String]) -> Vec<f32> {
-    let mut embedding = vec![0.0; 100]; // Use model.get_dimension() in practice
+    let mut embedding = vec![0.0; EMBEDDING_DIMENSION]; // Using the constant for dimension
     let mut count = 0;
 
     for token in tokens {
